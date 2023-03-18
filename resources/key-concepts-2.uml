@@ -1,0 +1,51 @@
+@startuml
+Title (m/decode [:uuid] "facf2030-2dd0-4155-b22b-6a49f7a38e9a" json-transformer)
+
+database "Global Schema Registry\nmalli.registry" {
+  folder "Lookup table" {
+    [{:uuid : #IntoSchema{:type :uuid},\n  uuid? : #IntoSchema{:type :uuid}}] as LT
+  }
+}
+
+package "Inputs" {
+  [facf2030-2dd0-4155-b22b-6a49f7a38e9a]
+  [json-transformer]
+  [:uuid]
+}
+
+node "Create JSON Decoder" {
+  [:uuid] --> lookup
+  lookup --> [malli.core/Schema]
+  [json-transformer] --> build
+  build --> [malli.core/Transformer]
+
+  node "Create transform-fn" {
+    [malli.core/Schema] --> [interceptor-map]
+    [malli.core/Transformer] --> [interceptor-map]
+    [interceptor-map] --> [transform-fn]
+  }
+}
+
+[lookup] --> LT : Lookup schema in Registry
+LT --> [lookup]
+
+database "Predefined codecs\nmalli.transform" {
+  folder "JSON Encoders" {
+    [{:uuid : uuid->str,\n  uuid? : uuid->str}] as Jenc
+  }
+
+  folder "JSON Decoders" {
+    [{:uuid : parse-uuid,\n  uuid? : parse-uuid}] as Jdec
+  }
+}
+
+[build] --> Jenc : Use predefined xforms
+Jenc --> [build]
+
+[build] --> Jdec : Use predefined xforms
+Jdec --> [build]
+
+[transform-fn] --> decode
+[facf2030-2dd0-4155-b22b-6a49f7a38e9a] --> decode
+
+@enduml
