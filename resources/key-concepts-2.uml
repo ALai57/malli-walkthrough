@@ -1,4 +1,6 @@
 @startuml
+skinparam TitleFontSize 24
+skinparam TitleFontStyle Bold
 Title (m/decode [:uuid] "facf2030-2dd0-4155-b22b-6a49f7a38e9a" json-transformer)
 
 database "Global Schema Registry\nmalli.registry" {
@@ -7,29 +9,31 @@ database "Global Schema Registry\nmalli.registry" {
   }
 }
 
-package "Inputs" {
-  [facf2030-2dd0-4155-b22b-6a49f7a38e9a]
+package "Step 1: Inputs" {
+  ["facf2030-2dd0-4155-b22b-6a49f7a38e9a"]
   [json-transformer]
   [:uuid]
 }
 
-node "Create JSON Decoder" {
-  [:uuid] --> lookup
-  lookup --> [malli.core/Schema]
-  [json-transformer] --> build
-  build --> [malli.core/Transformer]
+node "Step 2: Create JSON Decoder" {
+  rectangle "Step 2a: Find corresponding malli.core/Schema" {
+    [:uuid] --> [malli.core/Schema]
+  }
+  rectangle "Step 2b: Assemble Transformer"{
+    [json-transformer] --> [malli.core/Transformer]
+  }
 
-  node "Create transform-fn" {
-    [malli.core/Schema] --> [interceptor-map]
-    [malli.core/Transformer] --> [interceptor-map]
-    [interceptor-map] --> [transform-fn]
+  node "Step 2c: Combine Transformer and Schema\nto create transform-fn" {
+    [malli.core/Schema] --> [{:enter fn, :leave fn :as interceptor-map}]
+    [malli.core/Transformer] --> [{:enter fn, :leave fn :as interceptor-map}]
+    [{:enter fn, :leave fn :as interceptor-map}] --> [transform-fn] : compose interceptors into fn
   }
 }
 
-[lookup] --> LT : Lookup schema in Registry
-LT --> [lookup]
+[malli.core/Schema] --> LT : Lookup `:uuid` schema in Registry
+LT --> [malli.core/Schema]
 
-database "Predefined codecs\nmalli.transform" {
+database "Predefined codecs\nmalli.transform" as DB {
   folder "JSON Encoders" {
     [{:uuid : uuid->str,\n  uuid? : uuid->str}] as Jenc
   }
@@ -39,13 +43,11 @@ database "Predefined codecs\nmalli.transform" {
   }
 }
 
-[build] --> Jenc : Use predefined xforms
-Jenc --> [build]
+DB --> [malli.core/Transformer] : Use predefined codecs
 
-[build] --> Jdec : Use predefined xforms
-Jdec --> [build]
-
-[transform-fn] --> decode
-[facf2030-2dd0-4155-b22b-6a49f7a38e9a] --> decode
+rectangle "Step 3: Decode string to UUID" {
+  [transform-fn] --> [ #uuid "facf2030-2dd0-4155-b22b-6a49f7a38e9a"]
+  ["facf2030-2dd0-4155-b22b-6a49f7a38e9a"] --> [ #uuid "facf2030-2dd0-4155-b22b-6a49f7a38e9a"]
+}
 
 @enduml
