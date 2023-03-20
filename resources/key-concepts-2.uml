@@ -10,9 +10,9 @@ database "Global Schema Registry\nmalli.registry" {
 }
 
 package "Step 1: Inputs" {
+  [:uuid]
   ["facf2030-2dd0-4155-b22b-6a49f7a38e9a"]
   [json-transformer]
-  [:uuid]
 }
 
 node "Step 2: Create JSON Decoder" {
@@ -30,7 +30,9 @@ node "Step 2: Create JSON Decoder" {
   }
 }
 
-[malli.core/Schema] --> LT : Lookup `:uuid` schema in Registry
+DB -right-> [malli.core/Transformer] : Use predefined codecs
+
+[malli.core/Schema] -right-> LT : Lookup `:uuid` schema in Registry
 LT --> [malli.core/Schema]
 
 database "Predefined codecs\nmalli.transform" as DB {
@@ -43,7 +45,6 @@ database "Predefined codecs\nmalli.transform" as DB {
   }
 }
 
-DB --> [malli.core/Transformer] : Use predefined codecs
 
 rectangle "Step 3: Decode string to UUID" {
   [transform-fn] --> [ #uuid "facf2030-2dd0-4155-b22b-6a49f7a38e9a"]
