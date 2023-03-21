@@ -1,18 +1,18 @@
 @startuml
 skinparam TitleFontSize 24
 skinparam TitleFontStyle Bold
-Title (m/decode [:uuid] "facf2030-2dd0-4155-b22b-6a49f7a38e9a" json-transformer)
+Title Following data structures during a Malli decode\n(m/decode [:uuid] "facf2030-2dd0-4155-b22b-6a49f7a38e9a" (json-transformer))\n
 
 database "Global Schema Registry\nmalli.registry" {
   folder "Lookup table" {
-    [{:uuid : #IntoSchema{:type :uuid},\n  uuid? : #IntoSchema{:type :uuid}}] as LT
+    [{:uuid : #IntoSchema{:type :uuid},\n  uuid? : #IntoSchema{:type :uuid}\n ...}] as LT
   }
 }
 
 package "Step 1: Inputs" {
   [:uuid]
-  ["facf2030-2dd0-4155-b22b-6a49f7a38e9a"]
-  [json-transformer]
+  [ "facf2030-2dd0-4155-b22b-6a49f7a38e9a"]
+  [ (json-transformer)]
 }
 
 node "Step 2: Create JSON Decoder" {
@@ -20,13 +20,13 @@ node "Step 2: Create JSON Decoder" {
     [:uuid] --> [malli.core/Schema]
   }
   rectangle "Step 2b: Assemble Transformer"{
-    [json-transformer] --> [malli.core/Transformer]
+    [ (json-transformer)] --> [malli.core/Transformer] : Eval (json-transformer)
   }
 
-  node "Step 2c: Combine Transformer and Schema\nto create transform-fn" {
+  node "Step 2c: Create transform-fn by calling m/-transformer method\n on UUID malli.core/Schema with json-transformer" {
     [malli.core/Schema] --> [{:enter fn, :leave fn :as interceptor-map}]
     [malli.core/Transformer] --> [{:enter fn, :leave fn :as interceptor-map}]
-    [{:enter fn, :leave fn :as interceptor-map}] --> [transform-fn] : compose interceptors into fn
+    [{:enter fn, :leave fn :as interceptor-map}] --> [transform-fn] : compose interceptor into transform-fn
   }
 }
 
@@ -35,20 +35,20 @@ DB -right-> [malli.core/Transformer] : Use predefined codecs
 [malli.core/Schema] -right-> LT : Lookup `:uuid` schema in Registry
 LT --> [malli.core/Schema]
 
-database "Predefined codecs\nmalli.transform" as DB {
-  folder "JSON Encoders" {
-    [{:uuid : uuid->str,\n  uuid? : uuid->str}] as Jenc
+database "Predefined codecs\nmalli.transform :as mt" as DB {
+  folder "mt/-json-encoders" {
+    [{:uuid : -any->str,\n  uuid? : -any->str\n ...}] as Jenc
   }
 
-  folder "JSON Decoders" {
-    [{:uuid : parse-uuid,\n  uuid? : parse-uuid}] as Jdec
+  folder "mt/-json-decoders" {
+    [{:uuid : -string->uuid,\n  uuid? : -string->uuid\n ...}] as Jdec
   }
 }
 
 
 rectangle "Step 3: Decode string to UUID" {
   [transform-fn] --> [ #uuid "facf2030-2dd0-4155-b22b-6a49f7a38e9a"]
-  ["facf2030-2dd0-4155-b22b-6a49f7a38e9a"] --> [ #uuid "facf2030-2dd0-4155-b22b-6a49f7a38e9a"]
+  [ "facf2030-2dd0-4155-b22b-6a49f7a38e9a"] --> [ #uuid "facf2030-2dd0-4155-b22b-6a49f7a38e9a"]
 }
 
 @enduml
